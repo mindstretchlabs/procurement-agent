@@ -52,3 +52,23 @@ export const summaryResultSchema = z.object({
   recommended_next_steps: z.array(z.string()),
 });
 export type SummaryResult = z.infer<typeof summaryResultSchema>;
+
+export const sourcingBriefItemSchema = z.object({
+  category_zh: z.string(),
+  mark: z.string().nullable(),
+  description_zh: z.string(),
+  quantity: z.number().nullable(),
+  unit_zh: z.string().nullable(),
+  dimensions_zh: z.string().nullable(),
+  specs_zh: z.string(),
+  certifications_zh: z.string(),
+});
+export type SourcingBriefItem = z.infer<typeof sourcingBriefItemSchema>;
+
+export const sourcingBriefResultSchema = z.object({
+  project_title_zh: z.string(),
+  intro_zh: z.string(),
+  items: z.array(sourcingBriefItemSchema),
+  notes_zh: z.string().nullable(),
+});
+export type SourcingBriefResult = z.infer<typeof sourcingBriefResultSchema>;

@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { extractItems } from "@/lib/analysis/extract";
 import { scoreItems } from "@/lib/analysis/score";
 import { summarizeAnalysis } from "@/lib/analysis/summarize";
+import { generateSourcingBrief } from "@/lib/analysis/translate";
 import type { Category } from "@/lib/analysis/types";
 
 async function downloadPdfBytes(storagePath: string): Promise<Buffer> {
@@ -88,6 +89,23 @@ export async function runAnalysis(analysisId: string): Promise<void> {
     });
     if (summaryError) {
       throw new Error(`Failed to persist summary: ${summaryError.message}`);
+    }
+
+    await supabase.from("analyses").update({ status: "translating" }).eq("id", analysisId);
+    const sourcingBrief = await generateSourcingBrief({
+      items: scoring.items,
+      fileName: permitSet.file_name,
+    });
+
+    const { error: briefError } = await supabase.from("sourcing_briefs").insert({
+      analysis_id: analysisId,
+      project_title_zh: sourcingBrief.project_title_zh,
+      intro_zh: sourcingBrief.intro_zh,
+      items_zh: sourcingBrief.items,
+      notes_zh: sourcingBrief.notes_zh,
+    });
+    if (briefError) {
+      throw new Error(`Failed to persist sourcing brief: ${briefError.message}`);
     }
 
     await supabase

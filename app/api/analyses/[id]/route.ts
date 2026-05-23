@@ -34,7 +34,7 @@ export async function GET(
     });
   }
 
-  const [{ data: items }, { data: summary }] = await Promise.all([
+  const [{ data: items }, { data: summary }, { data: sourcingBrief }] = await Promise.all([
     supabase
       .from("material_items")
       .select("*")
@@ -42,6 +42,7 @@ export async function GET(
       .order("category", { ascending: true })
       .order("import_suitability_score", { ascending: false }),
     supabase.from("analysis_summaries").select("*").eq("analysis_id", id).maybeSingle(),
+    supabase.from("sourcing_briefs").select("*").eq("analysis_id", id).maybeSingle(),
   ]);
 
   return NextResponse.json({
@@ -54,5 +55,6 @@ export async function GET(
     errorMessage: analysis.error_message,
     items: items ?? [],
     summary: summary ?? null,
+    sourcingBrief: sourcingBrief ?? null,
   });
 }
