@@ -12,7 +12,7 @@ type AnalysisStatus =
 
 type MaterialItem = {
   id: string;
-  category: "windows" | "doors" | "flooring";
+  category: "doors" | "flooring";
   mark: string | null;
   description: string;
   quantity: number | null;
@@ -186,7 +186,7 @@ function CompletedReport({ data }: { data: AnalysisResponse }) {
         <h3 className="text-lg font-semibold">Items by category</h3>
         <p className="mt-1 text-sm text-ink/60">{items.length} items extracted</p>
         <div className="mt-6 space-y-8">
-          {(["windows", "doors", "flooring"] as const).map((category) => {
+          {(["doors", "flooring"] as const).map((category) => {
             const list = byCategory[category];
             if (!list?.length) return null;
             return <CategoryTable key={category} category={category} items={list} />;
@@ -232,7 +232,7 @@ function CategoryTable({
   category,
   items,
 }: {
-  category: "windows" | "doors" | "flooring";
+  category: "doors" | "flooring";
   items: MaterialItem[];
 }) {
   return (

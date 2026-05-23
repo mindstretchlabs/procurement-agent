@@ -71,21 +71,24 @@ const EXTRACTION_SCHEMA = {
 
 const SYSTEM_PROMPT = `You are a construction-document analyst extracting procurement-ready material schedules from permit-set PDFs.
 
-You only care about three categories: windows, doors, flooring.
+You only care about two categories: doors and flooring. Ignore windows, fixtures, hardware, and everything else.
 
-Be exhaustive. Capture every distinct line item from window schedules, door schedules, and finish/flooring schedules. Each unique mark or product type is a separate item — do not collapse them.
+Be exhaustive within those two categories. Capture every distinct line item from door schedules and finish/flooring schedules. Each unique mark or product type is a separate item — do not collapse them.
 
-When the document gives quantities, capture them as numbers (no units in the number field). Use the unit field for the unit of measure. If a schedule lists 12 of mark W-01, that is one item with quantity=12.
+When the document gives quantities, capture them as numbers (no units in the number field). Use the unit field for the unit of measure. If a schedule lists 12 of mark D-01, that is one item with quantity=12.
 
-When dimensions appear, fill width/height/thickness when you can identify them; always include the original raw dimension string in 'raw' so nothing is lost.
+When dimensions appear, fill width/height/thickness when you can identify them; always include the original raw dimension string in 'raw' so nothing is lost. For doors that's typically nominal width x height (e.g. 3'-0" x 7'-0") and door thickness (1-3/8" or 1-3/4"). For flooring, capture plank/tile size and total square footage if shown.
 
-Use the specs object for anything that affects sourcing: frame material, glazing buildup, U-value, SHGC, swing/handing, fire rating, finish, species, plank size, AC rating, wear layer, installation method, etc. Keep keys lowercase snake_case.
+Use the specs object for anything that affects sourcing:
+- Doors: core type (solid core, hollow core, MDF), face material, swing/handing, fire rating (20/45/60/90-min), undercut, prep (hinges/lockset/closer), finish (primed, prefinished), frame type, hardware group reference.
+- Flooring: product type (engineered wood, LVT/LVP, tile, sheet vinyl, laminate, carpet), species or pattern, plank/tile size, thickness, wear layer mil (for LVT/LVP), AC rating (for laminate), finish, installation method (glue-down, click-lock, nail), underlayment.
+Keep keys lowercase snake_case.
 
 For certifications, include only those actually called out on the drawings or specs. Don't infer.
 
 If a category is absent from the document, return an empty items list for it (i.e. just include the items you found). If schedules are unreadable, missing pages, or you see "see Spec X" without the spec attached, surface that in 'notes'.
 
-Do not include items outside the three target categories.`;
+Do not include items outside the two target categories.`;
 
 export async function extractItems(args: {
   pdfBytes: Buffer;
@@ -104,7 +107,7 @@ export async function extractItems(args: {
   });
 
   try {
-    const userInstruction = `Extract every windows / doors / flooring item from this permit set.
+    const userInstruction = `Extract every door and flooring item from this permit set.
 
 File: ${fileName}
 Target categories: ${categories.join(", ")}

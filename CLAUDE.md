@@ -1,6 +1,6 @@
 # Claude Code working notes
 
-This repo is the SourceProBuild MVP: permit-set PDF → import sourcing analysis for windows, doors, and flooring.
+This repo is the SourceProBuild MVP: permit-set PDF → import sourcing analysis for doors and flooring.
 
 ## Stack
 - Next.js 15 App Router, React 19, TypeScript strict
@@ -23,11 +23,13 @@ This repo is the SourceProBuild MVP: permit-set PDF → import sourcing analysis
 3. Wire it into `lib/analysis/run.ts` between the existing stages, updating the `analyses.status` enum if you add a new state (see `supabase/migrations/0001_init.sql`).
 4. If the output should be persisted, add a table + insert step.
 
-## Add a new category (e.g. cabinets)
+## Add a new category (e.g. windows, cabinets)
 
 1. Add to `CATEGORIES` in `lib/analysis/types.ts`.
-2. Update the `material_items.category` check constraint via a new migration.
-3. Update extraction + scoring system prompts in `lib/analysis/extract.ts` and `lib/analysis/score.ts` with category-specific guidance.
+2. Update the `material_items.category` check constraint via a new migration (see `supabase/migrations/0002_doors_flooring_only.sql` for the pattern).
+3. Update the `category` enum in the JSON schema inside `lib/analysis/score.ts`.
+4. Add category-specific guidance to extraction + scoring system prompts in `lib/analysis/extract.ts` and `lib/analysis/score.ts`.
+5. Add the new category to the hardcoded iteration order in `components/analysis-report.tsx`.
 
 ## Tests
 

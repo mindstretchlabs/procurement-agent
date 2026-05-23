@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CATEGORIES = ["windows", "doors", "flooring"] as const;
+export const CATEGORIES = ["doors", "flooring"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const dimensionsSchema = z

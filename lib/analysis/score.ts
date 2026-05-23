@@ -14,7 +14,7 @@ const SCORING_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          category: { type: "string", enum: ["windows", "doors", "flooring"] },
+          category: { type: "string", enum: ["doors", "flooring"] },
           mark: { type: ["string", "null"] },
           description: { type: "string" },
           quantity: { type: ["number", "null"] },
@@ -58,7 +58,7 @@ const SCORING_SCHEMA = {
           risk_notes: {
             type: ["string", "null"],
             description:
-              "Sourcing or compliance risks worth flagging: NFRC/AAMA for windows, fire ratings + UL listings for doors, FloorScore/CARB + species for flooring, tariff exposure, lead time, etc.",
+              "Sourcing or compliance risks worth flagging: fire ratings + UL listings + ANSI/BHMA hardware prep for doors, FloorScore/CARB Phase 2 + Lacey Act species sourcing + slip resistance for flooring, tariff exposure (Section 301), lead time, etc.",
           },
         },
         required: [
@@ -86,21 +86,26 @@ const SCORING_SCHEMA = {
 
 const SYSTEM_PROMPT = `You are a sourcing analyst scoring construction-material line items for overseas (China-first) import procurement.
 
+You only score two categories: doors and flooring.
+
 Score each item on import suitability (0–100) and estimate plausible landed-cost savings vs domestic supply.
 
-Scoring guidance by category:
-- Flooring (engineered wood, LVT, tile, laminate): generally high fit (75–95). High volume, modest compliance, mature China supply. Mind FloorScore / CARB Phase 2 / Lacey Act species sourcing.
-- Windows: high fit but compliance-sensitive (60–85). Must hit NFRC ratings, AAMA performance class, often state/local energy code. Custom sizes raise tooling cost. Confirm glazing buildup and structural performance class. Aluminum and aluminum-clad wood are well-served overseas.
-- Doors: split by type. Interior wood / sliding / barn doors: high fit (75–90). Fire-rated assemblies (20/45/60/90-min, UL listing, hardware prep): much lower fit (35–60) — UL traceability and hardware compatibility are real risks. Exterior + thermally broken: 60–80.
+Scoring guidance:
+- Flooring (engineered wood, LVT/LVP, tile, laminate, sheet vinyl): generally high fit (75–95). High volume, modest compliance, mature China supply. Mind FloorScore / CARB Phase 2 / Lacey Act species sourcing and Section 301 tariffs on Chinese-origin plywood and LVP.
+- Doors, split by type:
+  - Commodity interior doors (hollow-core, solid-core MDF, primed, flat or 6-panel): very high fit (80–95).
+  - Interior wood (stile-and-rail, stain-grade, sliding, barn): high fit (75–90).
+  - Exterior + thermally broken (steel, fiberglass, French doors): 60–80. Confirm AAMA performance if used in fenestration.
+  - Fire-rated assemblies (20/45/60/90-min, UL listing, hardware prep): much lower fit (35–60). UL traceability and hardware compatibility are real risks; many US fire-rated assemblies must be sourced from listed domestic manufacturers.
 
-Modifiers that reduce the score: low quantity (<25 units for windows/doors, small SF for flooring), heavy customization, exotic certifications, very tight lead time, hardware/glazing combos rarely produced for US market.
+Modifiers that reduce the score: low quantity (<25 units for doors, <500 SF for flooring), heavy customization, exotic certifications, very tight lead time, prefinished factory hardware prep that's rarely produced for US market.
 
 Savings estimates:
-- Flooring: typically 25–45% landed vs domestic
-- Standard windows: 20–35%
-- Fire-rated / certified specialty doors: 10–25%
 - Commodity interior doors: 30–50%
-- If the spec is so custom or low-volume that overseas isn't realistic, set savings to null and explain in risk_notes.
+- Solid-wood / stile-and-rail interior doors: 25–40%
+- Flooring (LVP, engineered wood, tile): 25–45%
+- Specialty / fire-rated doors: 10–25%
+- If the spec is so custom, low-volume, or compliance-restricted that overseas isn't realistic, set savings to null and explain in risk_notes.
 
 Preserve every input field on every item (category, mark, description, quantity, unit, dimensions, specs, certifications) exactly as provided. Only add the four new scoring fields. Do not invent items or drop items.`;
 

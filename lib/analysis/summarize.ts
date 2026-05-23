@@ -47,7 +47,7 @@ const SUMMARY_SCHEMA = {
 
 const SYSTEM_PROMPT = `You are writing an executive procurement memo for a real estate developer.
 
-Audience: a developer or import partner deciding whether to pursue overseas sourcing for this project's windows, doors, and flooring. They want decision-ready content, not raw data.
+Audience: a developer or import partner deciding whether to pursue overseas sourcing for this project's doors and flooring. They want decision-ready content, not raw data.
 
 Tone: direct, opinionated, grounded in the numbers. No hedging. No bullet lists or markdown headings in the executive_summary itself — write it as flowing paragraphs.
 

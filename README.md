@@ -1,6 +1,6 @@
 # SourceProBuild — AI Procurement Analyst
 
-MVP for converting construction permit sets into import sourcing analyses for **windows, doors, and flooring**.
+MVP for converting construction permit sets into import sourcing analyses for **doors and flooring**.
 
 Built on Next.js 15 (App Router) + Supabase (Storage, Postgres) + Claude (Opus 4.7) via the official Anthropic SDK.
 
@@ -9,7 +9,7 @@ Built on Next.js 15 (App Router) + Supabase (Storage, Postgres) + Claude (Opus 4
 1. User uploads a permit set PDF (≤ 100 MB).
 2. PDF is stored in Supabase Storage and a row is created in `permit_sets` + `analyses`.
 3. A background task (Next.js `after()`) runs three Claude calls:
-   - **Extract** — Claude reads the PDF as a `document` content block and returns structured JSON for every window / door / flooring schedule item (quantities, dimensions, specs, certifications).
+   - **Extract** — Claude reads the PDF as a `document` content block and returns structured JSON for every door / flooring schedule item (quantities, dimensions, specs, certifications).
    - **Score** — each item gets a 0–100 import-suitability score, savings range, and risk notes.
    - **Summarize** — an executive memo with key risks and recommended next steps.
 4. The frontend polls the analysis status and renders a decision-ready report when complete.
