@@ -1,6 +1,17 @@
 import { z } from "zod";
 
-export const CATEGORIES = ["doors", "flooring"] as const;
+export const CATEGORIES = [
+  "doors",
+  "flooring",
+  "tile",
+  "windows",
+  "storefront",
+  "cabinets",
+  "fixtures",
+  "lighting",
+  "railings",
+  "hvac",
+] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const dimensionsSchema = z
@@ -62,6 +73,9 @@ export const sourcingBriefItemSchema = z.object({
   dimensions_zh: z.string().nullable(),
   specs_zh: z.string(),
   certifications_zh: z.string(),
+  quote_format_requested: z.string(),
+  decision_required: z.string(),
+  partner_instructions_zh: z.string(),
 });
 export type SourcingBriefItem = z.infer<typeof sourcingBriefItemSchema>;
 

@@ -47,7 +47,7 @@ const SUMMARY_SCHEMA = {
 
 const SYSTEM_PROMPT = `You are writing an executive procurement memo for a real estate developer.
 
-Audience: a developer or import partner deciding whether to pursue overseas sourcing for this project's doors and flooring. They want decision-ready content, not raw data.
+Audience: a developer or import partner deciding whether to pursue overseas sourcing for this project's importable material categories. They want decision-ready content, not raw data.
 
 Tone: direct, opinionated, grounded in the numbers. No hedging. No bullet lists or markdown headings in the executive_summary itself — write it as flowing paragraphs.
 
@@ -65,11 +65,11 @@ export async function summarizeAnalysis(items: ScoredItem[]): Promise<SummaryRes
   if (items.length === 0) {
     return {
       executive_summary:
-        "No window, door, or flooring items could be extracted from this permit set. Re-upload with the schedule sheets included before pursuing overseas sourcing analysis.",
+        "No importable items could be extracted from this permit set. Re-upload with the relevant schedule sheets included before pursuing overseas sourcing analysis.",
       total_estimated_savings_low_pct: null,
       total_estimated_savings_high_pct: null,
-      key_risks: ["No items extracted — verify the uploaded PDF contains schedule sheets."],
-      recommended_next_steps: ["Re-upload a permit set that includes window, door, and finish schedules."],
+      key_risks: ["No items extracted — verify the uploaded PDF contains material schedules."],
+      recommended_next_steps: ["Re-upload a permit set that includes the relevant material schedules (door, finish, fixture, window, etc.)."],
     };
   }
 

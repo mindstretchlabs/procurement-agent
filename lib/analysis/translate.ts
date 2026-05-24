@@ -45,8 +45,23 @@ const SOURCING_BRIEF_SCHEMA = {
             description:
               "Required certifications listed in Chinese with the original cert codes preserved (e.g. '需要 FloorScore 认证，CARB Phase 2 合规').",
           },
+          quote_format_requested: {
+            type: "string",
+            description:
+              "Quote format instruction in English (e.g. 'FOB China port + DDP Newark option; itemized unit price; lead time; sample cost and timeline').",
+          },
+          decision_required: {
+            type: "string",
+            description:
+              "Decision note in English (e.g. 'Quote exact spec + approved equal', 'Quote budgetary now; firm after SF takeoff', 'Quote as bathroom kit').",
+          },
+          partner_instructions_zh: {
+            type: "string",
+            description:
+              "Standardized Chinese instruction paragraph for the factory. Must include: provide quote for exact spec or approved equal, include certification documents, sample timeline, production timeline, packaging and shipping method, and FOB + DDP pricing.",
+          },
         },
-        required: ["category_zh", "mark", "description_zh", "quantity", "unit_zh", "dimensions_zh", "specs_zh", "certifications_zh"],
+        required: ["category_zh", "mark", "description_zh", "quantity", "unit_zh", "dimensions_zh", "specs_zh", "certifications_zh", "quote_format_requested", "decision_required", "partner_instructions_zh"],
         additionalProperties: false,
       },
     },
@@ -150,23 +165,73 @@ CERTIFICATIONS (always keep the code in original form, add brief Chinese explana
 - NSF 61 → NSF 61 (饮用水接触材料安全)
 - NSF 372 → NSF 372 (低铅合规)
 - UL 10C → UL 10C (正压防火测试)
+- UL / ETL → UL / ETL (美国安全认证)
 - NFRC → NFRC (门窗能效认证)
+- AAMA 101 → AAMA 101 (门窗性能标准)
 - ANSI/BHMA A156 → ANSI/BHMA A156 (五金性能标准)
 - ASTM F1700 → ASTM F1700 (弹性地板标准)
+- ASTM C648 → ASTM C648 (瓷砖破坏强度标准)
 - ISO 13006 → ISO 13006 (瓷砖国际标准)
 - CRI Green Label Plus → CRI Green Label Plus (地毯低排放认证)
 - EPA WaterSense → EPA WaterSense (节水认证)
+- DLC → DLC (照明能效认证)
+- AHRI → AHRI (暖通空调性能认证)
+- Energy Star → Energy Star (能源之星)
+- TSCA Title VI → TSCA Title VI (甲醛释放联邦标准)
+
+WINDOWS & STOREFRONT:
+- curtain wall → 幕墙
+- storefront system → 店面系统
+- thermal break → 断桥隔热
+- double-hung window → 双悬窗
+- casement window → 平开窗
+- awning window → 上悬窗
+- fixed window → 固定窗
+- low-E glass → Low-E玻璃
+- insulated glass unit (IGU) → 中空玻璃
+- tempered glass → 钢化玻璃
+- laminated glass → 夹胶玻璃
+- U-value → U值 (传热系数)
+- SHGC → SHGC (太阳能热增益系数)
+
+CABINETS:
+- base cabinet → 地柜
+- wall cabinet → 吊柜
+- tall cabinet → 高柜
+- countertop → 台面
+- door style (shaker, flat panel, raised panel) → 门板样式
+- soft-close hinge → 缓冲铰链
+- drawer slide → 抽屉滑轨
+
+LIGHTING:
+- recessed downlight → 嵌入式筒灯
+- surface-mounted fixture → 明装灯具
+- pendant light → 吊灯
+- wall sconce → 壁灯
+- exit sign → 出口指示灯
+- emergency lighting → 应急照明
+- wet/damp rated → 防潮/防水等级
+
+HVAC:
+- PTAC → PTAC (终端空调)
+- PTHP → PTHP (终端热泵)
+- DOAS → DOAS (新风系统)
 
 Rules:
 - Use the glossary terms above. If a term appears in the glossary, you MUST use the listed translation.
 - Keep certification codes in their original form with the Chinese explanation in parentheses on first occurrence only.
-- Keep type marks (D-01, F-3, WC-1, etc.) unchanged.
+- Keep type marks (D-01, F-3, WC-1, W-01, etc.) unchanged.
 - Keep quantities as numbers.
 - For dimensions, keep the original imperial measurement and add metric in parentheses.
 - For specs, consolidate into a readable Chinese paragraph. Use industry-standard Chinese construction terminology.
 - For certifications, list what the US project requires — the factory needs to know what certs to include in their quote.
 - Be direct and professional. Write the way a Chinese sourcing agent would write to a factory, not the way a translation app would.
-- Items with import_suitability_score < 50 should NOT be included — they'll be sourced locally.`;
+- Items with import_suitability_score < 50 should NOT be included — they'll be sourced locally.
+
+RFQ-SPECIFIC FIELDS:
+- quote_format_requested: Always request "FOB China port + DDP Newark option; itemized unit price; lead time; sample cost and timeline" as the base. Add category-specific instructions (e.g. for fixtures: "quote as bathroom kit"; for cabinets: "quote per kitchen type"; for windows: "quote exact spec only").
+- decision_required: Based on the item's quantity confidence and spec completeness. Use phrases like "Quote exact spec + approved equal", "Quote budgetary now; firm after takeoff", "Quote as system package", "Quote as bathroom/kitchen set".
+- partner_instructions_zh: Use this standardized paragraph as the base, adapting the specifics: "请根据图纸/规格提供同等或更优产品报价；注明是否精确匹配或替代方案；提供认证文件、样品周期、生产周期、包装和装柜方案。报价需包含FOB中国港口价及DDP纽瓦克价格。" Add category-specific cert demands.`;
 
 export async function generateSourcingBrief(args: {
   items: ScoredItem[];

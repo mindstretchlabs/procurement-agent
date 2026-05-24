@@ -13,7 +13,7 @@ type AnalysisStatus =
 
 type MaterialItem = {
   id: string;
-  category: "doors" | "flooring";
+  category: string;
   mark: string | null;
   description: string;
   quantity: number | null;
@@ -37,6 +37,9 @@ type SourcingBriefItem = {
   dimensions_zh: string | null;
   specs_zh: string;
   certifications_zh: string;
+  quote_format_requested: string;
+  decision_required: string;
+  partner_instructions_zh: string;
 };
 
 type SourcingBrief = {
@@ -258,7 +261,7 @@ function ItemsTab({ data }: { data: AnalysisResponse }) {
       <h3 className="text-lg font-semibold">Items by category</h3>
       <p className="mt-1 text-sm text-ink/60">{items.length} items extracted</p>
       <div className="mt-6 space-y-8">
-        {(["doors", "flooring"] as const).map((category) => {
+        {["doors", "flooring", "tile", "windows", "storefront", "cabinets", "fixtures", "lighting", "railings", "hvac"].map((category) => {
           const list = byCategory[category];
           if (!list?.length) return null;
           return <CategoryTable key={category} category={category} items={list} />;
@@ -294,6 +297,9 @@ function SourcingBriefTab({ brief }: { brief?: SourcingBrief | null }) {
       if (item.dimensions_zh) lines.push(`尺寸: ${item.dimensions_zh}`);
       lines.push(`规格: ${item.specs_zh}`);
       lines.push(`认证要求: ${item.certifications_zh}`);
+      lines.push(`报价格式: ${item.quote_format_requested}`);
+      lines.push(`报价要求: ${item.decision_required}`);
+      lines.push(`工厂须知: ${item.partner_instructions_zh}`);
       lines.push("");
     }
     if (brief.notes_zh) {
@@ -348,6 +354,22 @@ function SourcingBriefTab({ brief }: { brief?: SourcingBrief | null }) {
               <p className="text-xs font-medium text-ink/80">认证要求</p>
               <p className="mt-1 text-xs text-ink/70">{item.certifications_zh}</p>
             </div>
+            <div className="md:col-span-3 mt-2 border-t border-ink/5 pt-3">
+              <div className="grid gap-4 md:grid-cols-3 text-xs">
+                <div>
+                  <p className="font-medium text-ink/80">报价格式</p>
+                  <p className="mt-1 text-ink/70">{item.quote_format_requested}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-ink/80">报价要求</p>
+                  <p className="mt-1 text-ink/70">{item.decision_required}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-ink/80">工厂须知</p>
+                  <p className="mt-1 text-ink/70">{item.partner_instructions_zh}</p>
+                </div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -396,7 +418,7 @@ function CategoryTable({
   category,
   items,
 }: {
-  category: "doors" | "flooring";
+  category: string;
   items: MaterialItem[];
 }) {
   return (

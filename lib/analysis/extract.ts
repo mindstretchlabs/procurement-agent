@@ -69,26 +69,34 @@ const EXTRACTION_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const SYSTEM_PROMPT = `You are a construction-document analyst extracting procurement-ready material schedules from permit-set PDFs.
+const SYSTEM_PROMPT = `You are a construction-document analyst extracting procurement-ready material schedules from permit-set PDFs for import sourcing.
 
-You only care about two categories: doors and flooring. Ignore windows, fixtures, hardware, and everything else.
+Extract items in these categories: doors, flooring, tile, windows, storefront, cabinets, fixtures, lighting, railings, hvac.
 
-Be exhaustive within those two categories. Capture every distinct line item from door schedules and finish/flooring schedules. Each unique mark or product type is a separate item — do not collapse them.
+Be exhaustive. Capture every distinct line item from the relevant schedules. Each unique mark or product type is a separate item — do not collapse them.
 
-When the document gives quantities, capture them as numbers (no units in the number field). Use the unit field for the unit of measure. If a schedule lists 12 of mark D-01, that is one item with quantity=12.
+When the document gives quantities, capture them as numbers. Use the unit field for the unit of measure. If a schedule lists 12 of mark D-01, that is one item with quantity=12. If exact quantities aren't available but you can estimate from unit count or area, provide the estimate and note "estimated" in the specs.
 
-When dimensions appear, fill width/height/thickness when you can identify them; always include the original raw dimension string in 'raw' so nothing is lost. For doors that's typically nominal width x height (e.g. 3'-0" x 7'-0") and door thickness (1-3/8" or 1-3/4"). For flooring, capture plank/tile size and total square footage if shown.
+When dimensions appear, fill width/height/thickness when you can; always include the original raw dimension string in 'raw'.
 
-Use the specs object for anything that affects sourcing:
-- Doors: core type (solid core, hollow core, MDF), face material, swing/handing, fire rating (20/45/60/90-min), undercut, prep (hinges/lockset/closer), finish (primed, prefinished), frame type, hardware group reference.
-- Flooring: product type (engineered wood, LVT/LVP, tile, sheet vinyl, laminate, carpet), species or pattern, plank/tile size, thickness, wear layer mil (for LVT/LVP), AC rating (for laminate), finish, installation method (glue-down, click-lock, nail), underlayment.
-Keep keys lowercase snake_case.
+Use the specs object for anything that affects sourcing. Keep keys lowercase snake_case. Category-specific guidance:
+
+- Doors: core type (solid core, hollow core, MDF), face material, swing/handing, fire rating (20/45/60/90-min), undercut, prep (hinges/lockset/closer), finish, frame type (HM/wood/aluminum), hardware group reference.
+- Flooring: product type (engineered wood, LVT/LVP, sheet vinyl, laminate, carpet tile), species or pattern, plank size, thickness, wear layer, AC rating, finish, installation method, underlayment.
+- Tile: material (porcelain, ceramic), size, finish (matte/polished/honed), rectified, slip rating (DCOF), application (floor/wall/wet area).
+- Windows: frame material (aluminum, vinyl, wood-clad), operation type (fixed, double-hung, casement, awning), glazing (single/double/triple, low-E, argon), U-value, SHGC, air/water rating.
+- Storefront: system type (curtain wall, storefront, entrance), frame material, glazing type (tempered, laminated, insulated), thermal break.
+- Cabinets: type (base, wall, tall, vanity), material (plywood, MDF, particleboard), face material, door style, finish, countertop material if included.
+- Fixtures: fixture type (WC, lavatory, faucet, bathtub, shower, kitchen sink), material (vitreous china, stainless steel, acrylic), manufacturer/model if specified, ADA compliance.
+- Lighting: fixture type (recessed, surface, pendant, sconce, exit), lamp type (LED), mounting, rated for wet/damp location, emergency/egress.
+- Railings: type (guardrail, handrail, balcony), material (steel, aluminum, glass), finish, height.
+- HVAC: equipment type (PTAC, PTHP, split system, DOAS), capacity, voltage/phase, efficiency rating.
 
 For certifications, include only those actually called out on the drawings or specs. Don't infer.
 
-If a category is absent from the document, return an empty items list for it (i.e. just include the items you found). If schedules are unreadable, missing pages, or you see "see Spec X" without the spec attached, surface that in 'notes'.
+If a category is absent from the document, just skip it. If schedules are unreadable or reference separate spec sections not included, surface that in 'notes'.
 
-Do not include items outside the two target categories.`;
+Do not include items outside the target categories (skip concrete, lumber, drywall, paint, fire alarm, sprinkler, elevator, electrical panels).`;
 
 export async function extractItems(args: {
   pdfBytes: Buffer;
@@ -107,7 +115,7 @@ export async function extractItems(args: {
   });
 
   try {
-    const userInstruction = `Extract every door and flooring item from this permit set.
+    const userInstruction = `Extract every importable item from this permit set.
 
 File: ${fileName}
 Target categories: ${categories.join(", ")}
@@ -116,7 +124,7 @@ Return strict JSON matching the schema. Be exhaustive — missing items mean mis
 
     const response = await client.beta.messages.create({
       model: MODEL_ID,
-      max_tokens: 16000,
+      max_tokens: 32000,
       system: SYSTEM_PROMPT,
       output_config: {
         format: { type: "json_schema", schema: EXTRACTION_SCHEMA },

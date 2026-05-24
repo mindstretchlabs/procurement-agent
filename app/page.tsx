@@ -9,8 +9,9 @@ export default function HomePage() {
           From permit set to import sourcing analysis.
         </h1>
         <p className="mt-4 max-w-prose text-base leading-relaxed text-ink/70">
-          Upload a construction permit set. We extract every door and flooring schedule item,
-          score it for overseas sourcing fit, and return a decision-ready executive memo.
+          Upload a construction permit set. We extract every importable item — doors, flooring,
+          tile, windows, storefront, cabinets, fixtures, lighting, railings, HVAC — score each
+          for overseas sourcing fit, and return a decision-ready executive memo with a Chinese RFQ package.
         </p>
 
         <ul className="mt-8 space-y-3 text-sm text-ink/80">
