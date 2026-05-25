@@ -36,8 +36,6 @@ const SCORING_SCHEMA = {
           certifications: { type: "array", items: { type: "string" } },
           import_suitability_score: {
             type: "number",
-            minimum: 0,
-            maximum: 100,
             description:
               "0–100 score for how well this item fits overseas (China) sourcing. 80+ = strong fit, 50–79 = workable with constraints, <50 = poor fit.",
           },
