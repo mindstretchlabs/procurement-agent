@@ -31,8 +31,7 @@ const SCORING_SCHEMA = {
             additionalProperties: false,
           },
           specs: {
-            type: ["object", "null"],
-            additionalProperties: { type: ["string", "number", "boolean", "null"] },
+            type: ["string", "null"],
           },
           certifications: { type: "array", items: { type: "string" } },
           import_suitability_score: {

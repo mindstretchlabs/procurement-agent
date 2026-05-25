@@ -30,7 +30,7 @@ export const extractedItemSchema = z.object({
   quantity: z.number().nullable(),
   unit: z.string().nullable(),
   dimensions: dimensionsSchema.nullable(),
-  specs: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).nullable(),
+  specs: z.string().nullable(),
   certifications: z.array(z.string()),
 });
 export type ExtractedItem = z.infer<typeof extractedItemSchema>;

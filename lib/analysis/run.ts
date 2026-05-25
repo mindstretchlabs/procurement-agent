@@ -60,7 +60,7 @@ export async function runAnalysis(analysisId: string): Promise<void> {
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,
-          specs: item.specs,
+          specs: item.specs ? { raw: item.specs } : null,
           dimensions: item.dimensions,
           certifications: item.certifications,
           import_suitability_score: item.import_suitability_score,

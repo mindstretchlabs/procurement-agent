@@ -45,10 +45,9 @@ const EXTRACTION_SCHEMA = {
             additionalProperties: false,
           },
           specs: {
-            type: ["object", "null"],
+            type: ["string", "null"],
             description:
-              "Open-ended spec key/value pairs surfaced from the schedule (frame material, glazing, U-value, swing, fire rating, finish, species, plank size, etc.).",
-            additionalProperties: { type: ["string", "number", "boolean", "null"] },
+              "Key specs as a semicolon-separated string (e.g. 'frame_material: aluminum; glazing: double low-e argon; u_value: 0.30; fire_rating: 90-min'). Include everything sourcing-relevant: material, finish, fire rating, core type, wear layer, gauge, flow rate, etc.",
           },
           certifications: {
             type: "array",
