@@ -127,34 +127,37 @@ Return strict JSON matching the schema. Be exhaustive — missing items mean mis
       });
       fileId = uploaded.id;
 
-      const response = await client.beta.messages.create({
-        model: MODEL_ID,
-        max_tokens: 32000,
-        system: SYSTEM_PROMPT,
-        output_config: {
-          format: { type: "json_schema", schema: EXTRACTION_SCHEMA },
-        },
-        betas: ["files-api-2025-04-14"],
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "document",
-                source: { type: "file", file_id: uploaded.id },
-                title: fileName,
-                citations: { enabled: false },
-              },
-              { type: "text", text: userInstruction },
-            ],
+      const response = await client.beta.messages.create(
+        {
+          model: MODEL_ID,
+          max_tokens: 32000,
+          system: SYSTEM_PROMPT,
+          output_config: {
+            format: { type: "json_schema", schema: EXTRACTION_SCHEMA },
           },
-        ],
-      });
-      const block = response.content.find((b) => b.type === "text");
+          betas: ["files-api-2025-04-14"],
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "document",
+                  source: { type: "file", file_id: uploaded.id },
+                  title: fileName,
+                  citations: { enabled: false },
+                },
+                { type: "text", text: userInstruction },
+              ],
+            },
+          ],
+        },
+        { timeout: 600000 },
+      );
+      const block = response.content.find((b: { type: string }) => b.type === "text");
       if (!block || block.type !== "text") throw new Error("Claude returned no text block for extraction");
-      responseText = block.text;
+      responseText = (block as { type: "text"; text: string }).text;
     } else {
-      const response = await client.messages.create({
+      const stream = client.messages.stream({
         model: MODEL_ID,
         max_tokens: 32000,
         system: SYSTEM_PROMPT,
@@ -180,7 +183,8 @@ Return strict JSON matching the schema. Be exhaustive — missing items mean mis
           },
         ],
       });
-      const block = response.content.find((b) => b.type === "text");
+      const msg = await stream.finalMessage();
+      const block = msg.content.find((b) => b.type === "text");
       if (!block || block.type !== "text") throw new Error("Claude returned no text block for extraction");
       responseText = block.text;
     }

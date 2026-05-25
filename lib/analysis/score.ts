@@ -150,7 +150,7 @@ export async function scoreItems(items: ExtractedItem[]): Promise<ScoringResult>
     return { items: [] };
   }
 
-  const response = await anthropic().messages.create({
+  const stream = anthropic().messages.stream({
     model: MODEL_ID,
     max_tokens: 32000,
     system: SYSTEM_PROMPT,
@@ -165,7 +165,8 @@ export async function scoreItems(items: ExtractedItem[]): Promise<ScoringResult>
     ],
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
+  const msg = await stream.finalMessage();
+  const textBlock = msg.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {
     throw new Error("Claude returned no text block for scoring");
   }

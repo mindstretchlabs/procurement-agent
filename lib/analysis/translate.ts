@@ -250,7 +250,7 @@ export async function generateSourcingBrief(args: {
     };
   }
 
-  const response = await anthropic().messages.create({
+  const stream = anthropic().messages.stream({
     model: MODEL_ID,
     max_tokens: 16000,
     system: SYSTEM_PROMPT,
@@ -271,7 +271,8 @@ ${JSON.stringify({ items: importableItems }, null, 2)}`,
     ],
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
+  const msg = await stream.finalMessage();
+  const textBlock = msg.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {
     throw new Error("Claude returned no text block for sourcing brief");
   }
