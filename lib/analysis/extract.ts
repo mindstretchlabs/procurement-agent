@@ -106,62 +106,98 @@ export async function extractItems(args: {
   const { pdfBytes, fileName, categories } = args;
   const client = anthropic();
 
-  // Upload via the Files API (beta) so we don't hit the ~32 MB inline base64
-  // ceiling. The same file_id can be reused across requests; we delete it
-  // when extraction is done because no downstream stage needs the PDF.
-  const uploaded = await client.beta.files.upload({
-    file: new File([new Uint8Array(pdfBytes)], fileName, { type: "application/pdf" }),
-    betas: ["files-api-2025-04-14"],
-  });
+  const useFilesApi = pdfBytes.byteLength > 15 * 1024 * 1024;
 
-  try {
-    const userInstruction = `Extract every importable item from this permit set.
+  const userInstruction = `Extract every importable item from this permit set.
 
 File: ${fileName}
 Target categories: ${categories.join(", ")}
 
 Return strict JSON matching the schema. Be exhaustive — missing items mean missed savings later.`;
 
-    const response = await client.beta.messages.create({
-      model: MODEL_ID,
-      max_tokens: 32000,
-      system: SYSTEM_PROMPT,
-      output_config: {
-        format: { type: "json_schema", schema: EXTRACTION_SCHEMA },
-      },
-      betas: ["files-api-2025-04-14"],
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "document",
-              source: { type: "file", file_id: uploaded.id },
-              title: fileName,
-              citations: { enabled: false },
-            },
-            { type: "text", text: userInstruction },
-          ],
-        },
-      ],
-    });
+  let fileId: string | null = null;
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("Claude returned no text block for extraction");
+  try {
+    let responseText: string;
+
+    if (useFilesApi) {
+      const uploaded = await client.beta.files.upload({
+        file: new File([new Uint8Array(pdfBytes)], fileName, { type: "application/pdf" }),
+        betas: ["files-api-2025-04-14"],
+      });
+      fileId = uploaded.id;
+
+      const response = await client.beta.messages.create({
+        model: MODEL_ID,
+        max_tokens: 32000,
+        system: SYSTEM_PROMPT,
+        output_config: {
+          format: { type: "json_schema", schema: EXTRACTION_SCHEMA },
+        },
+        betas: ["files-api-2025-04-14"],
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "document",
+                source: { type: "file", file_id: uploaded.id },
+                title: fileName,
+                citations: { enabled: false },
+              },
+              { type: "text", text: userInstruction },
+            ],
+          },
+        ],
+      });
+      const block = response.content.find((b) => b.type === "text");
+      if (!block || block.type !== "text") throw new Error("Claude returned no text block for extraction");
+      responseText = block.text;
+    } else {
+      const response = await client.messages.create({
+        model: MODEL_ID,
+        max_tokens: 32000,
+        system: SYSTEM_PROMPT,
+        output_config: {
+          format: { type: "json_schema", schema: EXTRACTION_SCHEMA },
+        },
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "document",
+                source: {
+                  type: "base64",
+                  media_type: "application/pdf",
+                  data: pdfBytes.toString("base64"),
+                },
+                title: fileName,
+                citations: { enabled: false },
+              },
+              { type: "text", text: userInstruction },
+            ],
+          },
+        ],
+      });
+      const block = response.content.find((b) => b.type === "text");
+      if (!block || block.type !== "text") throw new Error("Claude returned no text block for extraction");
+      responseText = block.text;
     }
 
-    const parsed = extractionResultSchema.parse(JSON.parse(textBlock.text));
+    const parsed = extractionResultSchema.parse(JSON.parse(responseText));
     // Defensive: drop items outside the requested categories.
     return {
       ...parsed,
       items: parsed.items.filter((item) => categories.includes(item.category)),
     };
   } finally {
-    await client.beta.files
-      .delete(uploaded.id, { betas: ["files-api-2025-04-14"] })
-      .catch((err) => {
-        console.warn(`Failed to delete uploaded file ${uploaded.id}:`, err);
-      });
+    if (fileId) {
+      await client.beta.files
+        .delete(fileId, { betas: ["files-api-2025-04-14"] })
+        .catch((err) => {
+          console.warn(`Failed to delete uploaded file ${fileId}:`, err);
+        });
+    }
   }
 }
