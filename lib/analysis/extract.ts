@@ -1,10 +1,12 @@
 import "server-only";
+import { PDFDocument } from "pdf-lib";
 import { anthropic, MODEL_ID } from "@/lib/analysis/anthropic";
 import {
   CATEGORIES,
   extractionResultSchema,
   type Category,
   type ExtractionResult,
+  type ExtractedItem,
 } from "@/lib/analysis/types";
 
 const EXTRACTION_SCHEMA = {
@@ -98,110 +100,105 @@ If a category is absent from the document, just skip it. If schedules are unread
 
 Do not include items outside the target categories (skip concrete, lumber, drywall, paint, fire alarm, sprinkler, elevator, electrical panels).`;
 
+const MAX_PAGES_PER_CHUNK = 50;
+const MAX_BYTES_PER_CHUNK = 20 * 1024 * 1024;
+
+async function splitPdf(pdfBytes: Buffer): Promise<Buffer[]> {
+  const doc = await PDFDocument.load(pdfBytes);
+  const totalPages = doc.getPageCount();
+
+  if (totalPages <= MAX_PAGES_PER_CHUNK && pdfBytes.byteLength <= MAX_BYTES_PER_CHUNK) {
+    return [pdfBytes];
+  }
+
+  const chunks: Buffer[] = [];
+  for (let start = 0; start < totalPages; start += MAX_PAGES_PER_CHUNK) {
+    const end = Math.min(start + MAX_PAGES_PER_CHUNK, totalPages);
+    const chunkDoc = await PDFDocument.create();
+    const pages = await chunkDoc.copyPages(doc, Array.from({ length: end - start }, (_, i) => start + i));
+    pages.forEach((p) => chunkDoc.addPage(p));
+    const bytes = await chunkDoc.save();
+    chunks.push(Buffer.from(bytes));
+  }
+
+  console.log(`Split ${totalPages}-page PDF into ${chunks.length} chunks`);
+  return chunks;
+}
+
+async function extractFromChunk(
+  pdfChunk: Buffer,
+  fileName: string,
+  chunkLabel: string,
+  categories: readonly Category[],
+): Promise<ExtractionResult> {
+  const client = anthropic();
+
+  const userInstruction = `Extract every importable item from this permit set.
+
+File: ${fileName} (${chunkLabel})
+Target categories: ${categories.join(", ")}
+
+Return strict JSON matching the schema. Be exhaustive — missing items mean missed savings later.`;
+
+  const stream = client.messages.stream({
+    model: MODEL_ID,
+    max_tokens: 32000,
+    system: SYSTEM_PROMPT,
+    output_config: {
+      format: { type: "json_schema", schema: EXTRACTION_SCHEMA },
+    },
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: pdfChunk.toString("base64"),
+            },
+            title: `${fileName} — ${chunkLabel}`,
+            citations: { enabled: false },
+          },
+          { type: "text", text: userInstruction },
+        ],
+      },
+    ],
+  });
+
+  const msg = await stream.finalMessage();
+  const block = msg.content.find((b) => b.type === "text");
+  if (!block || block.type !== "text") {
+    throw new Error(`Claude returned no text block for extraction (${chunkLabel})`);
+  }
+
+  return extractionResultSchema.parse(JSON.parse(block.text));
+}
+
 export async function extractItems(args: {
   pdfBytes: Buffer;
   fileName: string;
   categories: readonly Category[];
 }): Promise<ExtractionResult> {
   const { pdfBytes, fileName, categories } = args;
-  const client = anthropic();
 
-  const useFilesApi = pdfBytes.byteLength > 25 * 1024 * 1024;
+  const chunks = await splitPdf(pdfBytes);
 
-  const userInstruction = `Extract every importable item from this permit set.
+  const allItems: ExtractedItem[] = [];
+  const allNotes: string[] = [];
 
-File: ${fileName}
-Target categories: ${categories.join(", ")}
+  for (let i = 0; i < chunks.length; i++) {
+    const label = chunks.length === 1 ? "full document" : `pages ${i * MAX_PAGES_PER_CHUNK + 1}–${Math.min((i + 1) * MAX_PAGES_PER_CHUNK, 999)}`;
+    console.log(`Extracting chunk ${i + 1}/${chunks.length}: ${label} (${(chunks[i].byteLength / 1024 / 1024).toFixed(1)} MB)`);
 
-Return strict JSON matching the schema. Be exhaustive — missing items mean missed savings later.`;
-
-  let fileId: string | null = null;
-
-  try {
-    let responseText: string;
-
-    if (useFilesApi) {
-      const uploaded = await client.beta.files.upload({
-        file: new File([new Uint8Array(pdfBytes)], fileName, { type: "application/pdf" }),
-        betas: ["files-api-2025-04-14"],
-      });
-      fileId = uploaded.id;
-
-      const response = await client.beta.messages.create(
-        {
-          model: MODEL_ID,
-          max_tokens: 32000,
-          system: SYSTEM_PROMPT,
-          output_config: {
-            format: { type: "json_schema", schema: EXTRACTION_SCHEMA },
-          },
-          betas: ["files-api-2025-04-14"],
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "document",
-                  source: { type: "file", file_id: uploaded.id },
-                  title: fileName,
-                  citations: { enabled: false },
-                },
-                { type: "text", text: userInstruction },
-              ],
-            },
-          ],
-        },
-        { timeout: 600000 },
-      );
-      const block = response.content.find((b: { type: string }) => b.type === "text");
-      if (!block || block.type !== "text") throw new Error("Claude returned no text block for extraction");
-      responseText = (block as { type: "text"; text: string }).text;
-    } else {
-      const stream = client.messages.stream({
-        model: MODEL_ID,
-        max_tokens: 32000,
-        system: SYSTEM_PROMPT,
-        output_config: {
-          format: { type: "json_schema", schema: EXTRACTION_SCHEMA },
-        },
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "document",
-                source: {
-                  type: "base64",
-                  media_type: "application/pdf",
-                  data: pdfBytes.toString("base64"),
-                },
-                title: fileName,
-                citations: { enabled: false },
-              },
-              { type: "text", text: userInstruction },
-            ],
-          },
-        ],
-      });
-      const msg = await stream.finalMessage();
-      const block = msg.content.find((b) => b.type === "text");
-      if (!block || block.type !== "text") throw new Error("Claude returned no text block for extraction");
-      responseText = block.text;
-    }
-
-    const parsed = extractionResultSchema.parse(JSON.parse(responseText));
-    // Defensive: drop items outside the requested categories.
-    return {
-      ...parsed,
-      items: parsed.items.filter((item) => categories.includes(item.category)),
-    };
-  } finally {
-    if (fileId) {
-      await client.beta.files
-        .delete(fileId, { betas: ["files-api-2025-04-14"] })
-        .catch((err) => {
-          console.warn(`Failed to delete uploaded file ${fileId}:`, err);
-        });
-    }
+    const result = await extractFromChunk(chunks[i], fileName, label, categories);
+    allItems.push(...result.items);
+    if (result.notes) allNotes.push(result.notes);
   }
+
+  return {
+    items: allItems.filter((item) => categories.includes(item.category)),
+    notes: allNotes.length > 0 ? allNotes.join("\n\n") : null,
+  };
 }
