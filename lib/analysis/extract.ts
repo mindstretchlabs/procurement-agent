@@ -106,7 +106,7 @@ export async function extractItems(args: {
   const { pdfBytes, fileName, categories } = args;
   const client = anthropic();
 
-  const useFilesApi = pdfBytes.byteLength > 15 * 1024 * 1024;
+  const useFilesApi = pdfBytes.byteLength > 25 * 1024 * 1024;
 
   const userInstruction = `Extract every importable item from this permit set.
 
